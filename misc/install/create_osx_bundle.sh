@@ -28,6 +28,7 @@ mkdir -p $BUNDLE_NAME/Contents/Resources/id1
 cp $BINARY $BUNDLE_NAME/Contents/MacOS/.
 cp $(dirname $0)/$ICON_FILE $BUNDLE_NAME/Contents/Resources/.
 touch $BUNDLE_NAME/Contents/Resources/id1/Copy\ your\ pak0.pak\ and\ pak1.pak\ files\ here.txt
+cp LICENSE $BUNDLE_NAME/Contents/Resources/
 
 echo '#!/bin/sh' > $BUNDLE_NAME/Contents/MacOS/ezquake
 echo '' >> $BUNDLE_NAME/Contents/MacOS/ezquake
@@ -41,13 +42,13 @@ echo 'fi' >> $BUNDLE_NAME/Contents/MacOS/ezquake
 echo '' >> $BUNDLE_NAME/Contents/MacOS/ezquake
 echo "exec \"\$DIRNAME\"/$BINARY -basedir \"\$DIRNAME\"/../Resources" >> $BUNDLE_NAME/Contents/MacOS/ezquake
 
-chmod u+x $BUNDLE_NAME/Contents/MacOS/ezquake
+chmod a+x $BUNDLE_NAME/Contents/MacOS/ezquake
 
 /usr/libexec/PlistBuddy -c "Add :CFBundleName string \"ezQuake\"" $BUNDLE_NAME/Contents/Info.plist > /dev/null
 /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string \"$ICON_FILE\"" $BUNDLE_NAME/Contents/Info.plist
 /usr/libexec/PlistBuddy -c "Add :CFBundleExecutable string \"ezquake\"" $BUNDLE_NAME/Contents/Info.plist
-/usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string \"net.sf.ezquake\"" $BUNDLE_NAME/Contents/Info.plist
-/usr/libexec/PlistBuddy -c "Add :CFBundleVersion string \"3.0.0\"" $BUNDLE_NAME/Contents/Info.plist
+/usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string \"io.github.ezquake\"" $BUNDLE_NAME/Contents/Info.plist
+/usr/libexec/PlistBuddy -c "Add :CFBundleVersion string \"3.2.1\"" $BUNDLE_NAME/Contents/Info.plist
 
 # qw:// protocol support
 /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $BUNDLE_NAME/Contents/Info.plist

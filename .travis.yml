@@ -8,28 +8,29 @@ matrix:
     - os: linux
       dist: trusty
       sudo: required
-      compiler: gcc    
+      compiler: gcc
+      env: AUTOBUILD_SUFFIX=ubuntu
     - os: linux
       dist: trusty
       sudo: required
       compiler: gcc
-      env: EZ_CONFIG_FILE=.config_windows
+      env: EZ_CONFIG_FILE=.config_windows AUTOBUILD_SUFFIX=win32
     - os: osx
-      osx_image: xcode8.3
+      osx_image: xcode11.6
       compiler: gcc
+      env: AUTOBUILD_SUFFIX=osx10.15.5-xcode11.6
     - os: osx
-      osx_image: xcode9.2
+      osx_image: xcode10.1
       compiler: gcc
-    - os: osx
-      osx_image: xcode9.3
-      compiler: gcc
+      env: AUTOBUILD_SUFFIX=osx10.13-xcode10.1
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y libsdl2-2.0-0 libegl1-mesa-dev libgles2-mesa-dev libsdl2-dev libjansson-dev libexpat1-dev libcurl4-openssl-dev libpng12-dev libjpeg-dev libspeex-dev libspeexdsp-dev; fi
   - if [[ "$EZ_CONFIG_FILE" == ".config_windows" ]]; then sudo apt-get install -y mingw-w64; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install sdl2 sdl2_net sdl2_image sdl2_gfx sdl2_mixer jansson speex speexdsp; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink python@3.9; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install sdl2 sdl2_net sdl2_image sdl2_gfx sdl2_mixer jansson speex speexdsp jq; fi
 
 script:
-  - make
+  - bash ./misc/travis-build/build.sh

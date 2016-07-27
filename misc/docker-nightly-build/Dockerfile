@@ -4,6 +4,7 @@ MAINTAINER Anders Lindmark <anders.lindmark@gmail.com>
 
 # Install prerequisites
 RUN pacman-key --init && pacman-key --refresh-keys
+RUN pacman -Sy archlinux-keyring
 RUN pacman --noconfirm -Syu && pacman-db-upgrade
 RUN pacman --noconfirm -S gcc git make pkg-config p7zip sdl2 libpng jansson libjpeg-turbo mingw-w64-gcc
 
