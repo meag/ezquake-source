@@ -2708,10 +2708,10 @@ static void Cmd_Observe_f (void)
 
 #ifdef FTE_PEXT2_VOICECHAT
 /*
-Pivicy issues:
+Privacy issues:
 By sending voice chat to a server, you are unsure who might be listening.
 Voice can be recorded to an mvd, potentially including voice.
-Spectators tracvking you are able to hear team chat of your team.
+Spectators tracking you are able to hear team chat of your team.
 You're never quite sure if anyone might join the server and your team before you finish saying a sentance.
 You run the risk of sounds around you being recorded by quake, including but not limited to: TV channels, loved ones, phones, YouTube videos featuring certain moans.
 Default on non-team games is to broadcast.
@@ -3455,7 +3455,7 @@ void SV_RunCmd (usercmd_t *ucmd, qbool inside, qbool second_attempt) //bliP: 24/
 
 	// copy humans' intentions to progs
 	sv_player->v.button0 = ucmd->buttons & 1;
-	sv_player->v.button2 = (ucmd->buttons & 2) >>1;
+	sv_player->v.button2 = (ucmd->buttons & 2) >> 1;
 	sv_player->v.button1 = (ucmd->buttons & 4) >> 2;
 	if (ucmd->impulse)
 		sv_player->v.impulse = ucmd->impulse;
@@ -3632,6 +3632,104 @@ FIXME
 	}
 }
 
+#ifdef MVD_PEXT1_SERVERSIDEWEAPON
+// Ranks best weapon for player
+void SV_ServerSideWeaponRank(client_t* client, int* best_weapon, int* best_impulse, int* hide_weapon, int* hide_impulse)
+{
+	entvars_t* ent = &client->edict->v;
+	int i;
+	int items = (int)ent->items;
+	int weapon = (int)ent->weapon;
+	int shells = (int)ent->ammo_shells;
+	int nails = (int)ent->ammo_nails;
+	int rockets = (int)ent->ammo_rockets;
+	int cells = (int)ent->ammo_cells;
+
+	if (client->weaponswitch_hide == 2 && shells > 0) {
+		*hide_weapon = IT_SHOTGUN;
+		*hide_impulse = 2;
+	}
+	else if (client->weaponswitch_hide == 1) {
+		*hide_weapon = IT_AXE;
+		*hide_impulse = 1;
+	}
+	else {
+		*hide_weapon = 0;
+		*hide_impulse = 0;
+	}
+
+	// Default to staying on the current weapon, regardless of ammo
+	*best_weapon = weapon;
+	*best_impulse = 0;
+
+	for (i = 0; i < sizeof(client->weaponswitch_priority) / sizeof(client->weaponswitch_priority[0]); ++i) {
+		switch (client->weaponswitch_priority[i]) {
+			case 0:
+				// end of list
+				return;
+			case 1:
+				if (items & IT_AXE) {
+					*best_weapon = IT_AXE;
+					*best_impulse = 1;
+					return;
+				}
+				break;
+			case 2:
+				if ((items & IT_SHOTGUN) && shells > 0) {
+					*best_weapon = IT_SHOTGUN;
+					*best_impulse = 2;
+					return;
+				}
+				break;
+			case 3:
+				if ((items & IT_SUPER_SHOTGUN) && shells > 1) {
+					*best_weapon = IT_SUPER_SHOTGUN;
+					*best_impulse = 3;
+					return;
+				}
+				break;
+			case 4:
+				if ((items & IT_NAILGUN) && nails > 0) {
+					*best_weapon = IT_NAILGUN;
+					*best_impulse = 4;
+					return;
+				}
+				break;
+			case 5:
+				if ((items & IT_SUPER_NAILGUN) && nails > 1) {
+					*best_weapon = IT_SUPER_NAILGUN;
+					*best_impulse = 5;
+					return;
+				}
+				break;
+			case 6:
+				if ((items & IT_GRENADE_LAUNCHER) && rockets > 0) {
+					*best_weapon = IT_GRENADE_LAUNCHER;
+					*best_impulse = 6;
+					return;
+				}
+				break;
+			case 7:
+				if ((items & IT_ROCKET_LAUNCHER) && rockets > 0) {
+					*best_weapon = IT_ROCKET_LAUNCHER;
+					*best_impulse = 7;
+					return;
+				}
+				break;
+			case 8:
+				if ((items & IT_LIGHTNING) && cells > 0) {
+					*best_weapon = IT_LIGHTNING;
+					*best_impulse = 8;
+					return;
+				}
+				break;
+		}
+	}
+
+	return;
+}
+#endif
+
 /*
 ===========
 SV_PostRunCmd
@@ -3643,9 +3741,57 @@ void SV_PostRunCmd(void)
 	vec3_t originalvel;
 	qbool onground;
 	// run post-think
+#ifdef MVD_PEXT1_SERVERSIDEWEAPON
+	qbool impulse_set = false;
+	entvars_t* ent = &sv_client->edict->v;
+#endif
 
 	if (!sv_client->spectator)
 	{
+#ifdef MVD_PEXT1_SERVERSIDEWEAPON
+		if (sv_client->mvdprotocolextensions1 & MVD_PEXT1_SERVERSIDEWEAPON) {
+			entvars_t* ent = &sv_client->edict->v;
+			int best_weapon, best_impulse, hide_weapon, hide_impulse;
+			qbool switch_to_best_weapon = false;
+			int mode = sv_client->weaponswitch_mode;
+			qbool firing = (ent->button0 != 0);
+
+			// modes: 0 immediately choose best, 1 preselect (wait until fire), 2 immediate if firing
+			// mode 2 = "preselect(1) when not holding +attack, else immediate(0)"
+			if (mode == 2) {
+				mode = (firing ? 0 : 1);
+			}
+
+			// by this point we should be down to 0 or 1
+			switch_to_best_weapon = (mode == 0 && sv_client->weaponswitch_pending) || firing;
+
+			SV_ServerSideWeaponRank(sv_client, &best_weapon, &best_impulse, &hide_weapon, &hide_impulse);
+
+			if (switch_to_best_weapon && sv_client->weaponswitch_pending && sv_client->weaponswitch_forgetorder) {
+				// Over-write the list sent with the result
+				if (developer.integer) {
+					SV_ClientPrintf(sv_client, PRINT_HIGH, "Best: %d, forgetting rest\n", best_impulse);
+				}
+				sv_client->weaponswitch_priority[0] = best_impulse;
+				sv_client->weaponswitch_priority[1] = 0;
+			}
+
+			if (!ent->impulse) {
+				if (switch_to_best_weapon) {
+					if (best_impulse && ent->weapon != best_weapon) {
+						ent->impulse = best_impulse;
+						impulse_set = true;
+					}
+				}
+				else if (!firing && ent->weapon != hide_weapon && hide_impulse) {
+					ent->impulse = hide_impulse;
+					impulse_set = true;
+				}
+			}
+			sv_client->weaponswitch_pending = false;
+		}
+#endif
+
 		onground = (int) sv_player->v.flags & FL_ONGROUND;
 		pr_global_struct->time = sv.time;
 		pr_global_struct->self = EDICT_TO_PROG(sv_player);
@@ -3666,6 +3812,12 @@ void SV_PostRunCmd(void)
 			SV_RunNQNewmis ();
 		else
 			SV_RunNewmis ();
+
+#ifdef MVD_PEXT1_SERVERSIDEWEAPON
+		if (impulse_set) {
+			ent->impulse = 0;
+		}
+#endif
 	}
 	else
 	{
@@ -3889,6 +4041,60 @@ void SV_ExecuteClientMessage (client_t *cl)
 			cl->delta_sequence = MSG_ReadByte ();
 			break;
 
+#ifdef MVD_PEXT1_SERVERSIDEWEAPON
+		case clc_mvd_weapon:
+		{
+			int flags = MSG_ReadByte();
+			int weap = 0, w = 0;
+			qbool write = true;
+			int sequence_set = cl->netchan.incoming_sequence;
+			int weapon_hide_selection = 0;
+			int new_selections[MAX_WEAPONSWITCH_OPTIONS] = { 0 };
+
+			// This might be a duplicate that should be ignored
+			if (flags & clc_mvd_weapon_forget_ranking) {
+				int age = MSG_ReadByte();
+
+				sequence_set = cl->netchan.incoming_sequence - age;
+
+				write = (sequence_set > cl->weaponswitch_sequence_set);
+			}
+
+			while ((weap = MSG_ReadByte()) > 0) {
+				int weap1 = (weap >> 4) & 15;
+				int weap2 = (weap & 15);
+
+				if (weap1 && write && w < MAX_WEAPONSWITCH_OPTIONS) {
+					new_selections[w++] = weap1;
+				}
+				if (weap1 && weap2 && write && w < MAX_WEAPONSWITCH_OPTIONS) {
+					new_selections[w++] = weap2;
+				}
+
+				if (!weap1 || !weap2) {
+					break;
+				}
+			}
+			if (flags & clc_mvd_weapon_hide_axe) {
+				weapon_hide_selection = 1;
+			}
+			else if (flags & clc_mvd_weapon_hide_sg) {
+				weapon_hide_selection = 2;
+			}
+
+			if (write) {
+				cl->weaponswitch_sequence_set = sequence_set;
+				cl->weaponswitch_forgetorder = (flags & clc_mvd_weapon_forget_ranking);
+				cl->weaponswitch_mode = (flags & (clc_mvd_weapon_mode_presel | clc_mvd_weapon_mode_iffiring));
+				cl->weaponswitch_hide = weapon_hide_selection;
+				memcpy(cl->weaponswitch_priority, new_selections, sizeof(cl->weaponswitch_priority));
+			}
+			cl->weaponswitch_pending |= write;
+			cl->weaponswitch_sequence_set = sequence_set;
+			break;
+		}
+#endif
+
 		case clc_move:
 			if (move_issued)
 				return;		// someone is trying to cheat...
@@ -3950,6 +4156,7 @@ void SV_ExecuteClientMessage (client_t *cl)
 				return;
 			}
 
+#ifdef MVD_PEXT1_HIGHLAGTELEPORT
 			if (cl->mvdprotocolextensions1 & MVD_PEXT1_HIGHLAGTELEPORT) {
 				if (cl->lastteleport_outgoingseq && cl->netchan.incoming_acknowledged < cl->lastteleport_outgoingseq) {
 					if (cl->netchan.incoming_sequence - 2 > cl->lastteleport_incomingseq) {
@@ -3964,8 +4171,9 @@ void SV_ExecuteClientMessage (client_t *cl)
 					cl->lastteleport_outgoingseq = 0;
 				}
 			}
+#endif
 
-			SV_ExecuteClientMove (cl, oldest, oldcmd, newcmd);
+			SV_ExecuteClientMove(cl, oldest, oldcmd, newcmd);
 
 			cl->lastcmd = newcmd;
 			cl->lastcmd.buttons = 0; // avoid multiple fires on lag
