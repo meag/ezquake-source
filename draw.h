@@ -90,6 +90,7 @@ void Draw_Init(void);
 void Draw_Shutdown(void);
 void Draw_Character(float x, float y, int num);
 void Draw_CharacterW(float x, float y, wchar num);
+float Draw_CharacterWSP(float x, float y, wchar num, float scale, qbool proportional);
 void Draw_SubPic(float x, float y, mpic_t *pic, int srcx, int srcy, int width, int height);
 void Draw_Pic(float x, float y, mpic_t *pic);
 void Draw_TransPic(float x, float y, mpic_t *pic);
@@ -129,7 +130,7 @@ float Draw_SColoredAlphaString(float x, float y, const char *text, clrinfo_t *co
 void Draw_SAlt_String(float x, float y, const char *text, float scale, qbool proportional);
 float Draw_SString(float x, float y, const char *str, float scale, qbool proportional);
 
-float Draw_ConsoleString(float x, float y, const wchar *text, clrinfo_t *clr, int clr_cnt, int red, float scale, qbool proportional);
+int Draw_ConsoleString(float x, float y, const wchar *text, clrinfo_t *clr, int clr_cnt, int red, float scale, qbool proportional);
 float Draw_StringLengthW(const wchar *text, int length, float scale, qbool proportional);
 float Draw_StringLength(const char *text, int length, float scale, qbool proportional);
 float Draw_StringLengthColors(const char *text, int length, float scale, qbool proportional);

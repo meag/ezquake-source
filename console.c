@@ -669,7 +669,7 @@ void Con_PrintW(wchar *txt)
 				}
 				y = con.current % con_totallines;
 				idx = y * con_linewidth + con.x;
-				con.text[idx] = c | (c <= 0x7F ? mask | con_ormask : 0);	// only apply mask if in 'standard' charset
+				con.text[idx] = c | (c > 0 && c <= 0x7F ? (mask | con_ormask) : 0);	// only apply mask if in 'standard' charset
 				memset(&con.clr[idx], 0, sizeof(clrinfo_t)); // zeroing whole struct
 				con.clr[idx].c = color;
 				con.clr[idx].i = idx; // no, that not stupid :P
@@ -802,7 +802,7 @@ static qbool Con_NotifyMessageLine(float posX, float posY, float width, float he
 
 		x = 0;
 		while (s[x] && posX < width) {
-			float char_width = Draw_SCharacterP(posX, posY + bound(0, con_shift.value, 8), s[x], scale, proportional);
+			float char_width = Draw_CharacterWSP(posX, posY + bound(0, con_shift.value, 8), s[x], scale, proportional);
 
 			if (display_cursor && x == chat_linepos) {
 				Draw_SCharacterP(posX, posY + bound(0, con_shift.value, 8), 11, scale, proportional);
@@ -842,6 +842,7 @@ void SCR_DrawNotify(int posX, int posY, float scale, int notifyTime, int notifyL
 	v = 0;
 	if (notifyLines) {
 		int first_line = Con_FirstNotifyLine(notifyLines, timeout);
+
 		for (i = first_line; i <= con.current; i++) {
 			if (i < 0) {
 				continue;
@@ -859,8 +860,19 @@ void SCR_DrawNotify(int posX, int posY, float scale, int notifyTime, int notifyL
 			clearnotify = 0;
 			scr_copytop = 1;
 
-			Draw_ConsoleString(posX, v + posY, con.text + idx, con.clr + idx, notifyCols, 0, scale, proportional);
-			v += (8 * scale);
+			int printed = 0;
+			int last = idx + con_linewidth - 1;
+			while (last > idx && (con.text + last)[0] == 32)
+				--last;
+
+			while (last > idx) {
+				printed = Draw_ConsoleString(posX, v + posY, con.text + idx, con.clr + idx, min(notifyCols, last - idx + 1), 0, scale, proportional);
+				idx += printed;
+				v += (8 * scale);
+				if (printed == 0 || con.text[idx] == 0 || con.text[idx] == 0x80) {
+					break;
+				}
+			}
 		}
 	}
 

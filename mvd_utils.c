@@ -471,10 +471,15 @@ void MVD_ClockList_TopItems_Draw(double time_limit, int style, int x, int y, flo
 				barWidth = (round(67*scale)/time_limit) * time_limit;
 			}
 
-			Draw_AlphaFillRGB(x-1, y, barWidth, 10*scale,
-							  RGBA_TO_COLOR(mvd_wp_info[current->itemtype].Rcolor,
-									  	  	mvd_wp_info[current->itemtype].Gcolor,
-											mvd_wp_info[current->itemtype].Bcolor, 128));
+			Draw_AlphaFillRGB(
+				x-1, y, barWidth, 10*scale,
+				RGBA_TO_COLOR(
+					mvd_wp_info[current->itemtype].Rcolor,
+					mvd_wp_info[current->itemtype].Gcolor,
+					mvd_wp_info[current->itemtype].Bcolor,
+					128
+				)
+			);
 		}
 		else if (style == 7) {
 			// progress bar countdown, but itemname not in bar
@@ -485,10 +490,15 @@ void MVD_ClockList_TopItems_Draw(double time_limit, int style, int x, int y, flo
 				barWidth = (round(44*scale)/time_limit) * time_limit;
 			}
 
-			Draw_AlphaFillRGB(x+(22*scale), y, barWidth, 10*scale,
-							  RGBA_TO_COLOR(mvd_wp_info[current->itemtype].Rcolor,
-									  	    mvd_wp_info[current->itemtype].Gcolor,
-											mvd_wp_info[current->itemtype].Bcolor, 128));
+			Draw_AlphaFillRGB(
+				x+(22*scale), y, barWidth, 10*scale,
+				RGBA_TO_COLOR(
+					mvd_wp_info[current->itemtype].Rcolor,
+					mvd_wp_info[current->itemtype].Gcolor,
+					mvd_wp_info[current->itemtype].Bcolor,
+					128
+				)
+			);
 		}
 		else {
 			// built-in color(GL) or simple white (software)
