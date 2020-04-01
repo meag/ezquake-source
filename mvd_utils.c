@@ -521,7 +521,7 @@ void MVD_ClockList_TopItems_Draw(double time_limit, int style, int x, int y, flo
 		if (style == 3) {
 			y += LETTERHEIGHT * scale / 2;
 		}
-		else if ((style == 4) || (style == 5)) {
+		else if ((style == 6) || (style == 7)) {
 			y += round(4 * scale);
 		}
 	}
