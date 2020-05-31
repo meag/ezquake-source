@@ -1111,6 +1111,11 @@
       "group-id": "21",
       "type": "integer"
     },
+    "cl_c2sdupe": {
+    "group-id": "21",
+    "desc": "Packet Duplication (a la Qizmo .c2s command). Use this when experiencing packet loss. A value of 0 means no packet duplication between client and server (default). Values higher than 0 enable client-to-server Packet duplication (a value of 1 sends 1 duplicated packet to the server). The correspondent command for server-to-client packet duplication is /setinfo dupe (in compatible servers). The possible values for both commands are 0-5. Both values are rate-dependent, so increase your rate. Be conservative! or else rate cut will happen.",
+    "type": "integer"
+    },
     "cl_camera_death": {
       "default": "0",
       "desc": "Camera view above your body after death.",

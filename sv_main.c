@@ -3654,6 +3654,11 @@ void SV_ExtractFromUserinfo (client_t *cl, qbool namechanged)
 	val = Info_Get (&cl->_userinfo_ctx_, cl->download ? "drate" : "rate");
 	cl->netchan.rate = 1.0 / SV_BoundRate (cl->download != NULL, Q_atoi(*val ? val : "99999"));
 
+	//c2s packet dupes
+	val = Info_Get (&cl->_userinfo_ctx_, "dupe");
+	cl->netchan.dupe = atoi(val);
+	cl->netchan.dupe = bound(0, sv_client->netchan.dupe, 5); //0=1 packet (aka: no dupes).
+
 	// message level
 	val = Info_Get (&cl->_userinfo_ctx_, "msg");
 	if (val[0])

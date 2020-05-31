@@ -31,6 +31,7 @@ cvar_t cl_anglespeedkey     = {"cl_anglespeedkey","1.5"};
 cvar_t cl_backspeed         = {"cl_backspeed","400"};
 cvar_t cl_c2spps            = {"cl_c2spps","0"};
 cvar_t cl_c2sImpulseBackup  = {"cl_c2sImpulseBackup","3"};
+cvar_t cl_c2sdupe           = {"cl_c2sdupe","0"};
 cvar_t cl_forwardspeed      = {"cl_forwardspeed","400"};
 cvar_t cl_smartjump         = {"cl_smartjump", "1"};
 cvar_t cl_iDrive            = {"cl_iDrive", "0", 0, Rulesets_OnChange_cl_iDrive};
@@ -996,6 +997,9 @@ void CL_SendCmd(void)
 	lost = CL_CalcNet();
 	MSG_WriteByte (&buf, (byte)lost);
 
+	//send duplicated packets, if set
+	cls.netchan.dupe = bound(0, cl_c2sdupe.value, 5);
+	
 	// send this and the previous two cmds in the message, so if the last packet was dropped, it can be recovered
 	dontdrop = false;
 
@@ -1175,6 +1179,7 @@ void CL_InitInput(void)
 	Cvar_Register(&cl_nodelta);
 	Cvar_Register(&cl_c2sImpulseBackup);
 	Cvar_Register(&cl_c2spps);
+	Cvar_Register(&cl_c2sdupe);
 
 	Cvar_ResetCurrentGroup();
 

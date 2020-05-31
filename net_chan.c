@@ -342,17 +342,20 @@ void Netchan_Transmit (netchan_t *chan, int length, byte *data)
 	i = chan->outgoing_sequence & (MAX_LATENT-1);
 	chan->outgoing_size[i] = send.cursize;
 	chan->outgoing_time[i] = curtime;
-
+int dupi= 1;
 #ifndef SERVERONLY
 	//zoid, no input in demo playback mode
 	if (!cls.demoplayback)
 #endif
+        {
+	for (dupi = 0; dupi <= chan->dupe; dupi++)
 		NET_SendPacket (chan->sock, send.cursize, send.data, chan->remote_address);
+	}
 
 	if (chan->cleartime < curtime)
-		chan->cleartime = curtime + send.cursize * chan->rate;
+		chan->cleartime = curtime + send.cursize*dupi * chan->rate;
 	else
-		chan->cleartime += send.cursize * chan->rate;
+		chan->cleartime += send.cursize*dupi * chan->rate;
 
 #ifndef CLIENTONLY
 	if (chan->sock == NS_SERVER && sv.paused)
