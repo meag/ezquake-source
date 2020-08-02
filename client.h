@@ -140,8 +140,6 @@ typedef struct player_info_s
 	qbool	skin_refresh;
 	qbool	ignored;                // for ignore
 	qbool   vignored;               // for voip-ignore
-	qbool	validated;              // for authentication
-	char	f_server[16];           // for f_server responses
 
 	// VULT DEATH EFFECT
 	// Better putting the dead flag here instead of on the entity so whats dead stays dead
@@ -152,11 +150,15 @@ typedef struct player_info_s
 	char	_team[MAX_INFO_STRING];
 	int     known_team_color;
 
-	// 
+	// used for showing stack/health bar hud elements
 	double  max_health_last_set;
 	int     max_health;
 	double  prev_health_last_set;
 	int     prev_health;
+
+	// 
+	char	loginname[MAX_SCOREBOARDNAME];
+	char    loginflag[8];
 } __attribute__((aligned(64))) player_info_t;
 
 
@@ -467,6 +469,8 @@ typedef struct
 	int			lasttype;		///< The type of the last demo message.
 	qbool		findtrack;
 
+	// authenticating via web server
+	char        auth_logintoken[128];
 } clientPersistent_t;
 
 extern clientPersistent_t	cls;
@@ -645,6 +649,9 @@ typedef struct {
 	// r_viewmodellastfired
 	int         lastfired;
 	int         lastviewplayernum;
+
+	// authenticating via web server
+	char        auth_challenge[128];
 } clientState_t;
 
 #define SCORING_SYSTEM_DEFAULT   0
