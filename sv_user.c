@@ -51,6 +51,8 @@ cvar_t sv_voip_record = {"sv_voip_record", "0"};
 cvar_t sv_voip_echo = {"sv_voip_echo", "0"};
 #endif
 
+static void SV_UserSetWeaponRank(client_t* cl, const char* new_wrank);
+
 extern	vec3_t	player_mins;
 
 extern int	fp_messages, fp_persecond, fp_secondsdead;
@@ -2249,7 +2251,7 @@ static void Cmd_SetInfo_f (void)
 	}
 
 	if (Cmd_Argv(1)[0] == '*')
-		return;		// don't set priveledged values
+		return;		// don't set privileged values
 
 	if (strchr(Cmd_Argv(1), '\\') || strchr(Cmd_Argv(2), '\\'))
 		return;		// illegal char
@@ -3765,21 +3767,35 @@ void SV_PostRunCmd(void)
 
 			// by this point we should be down to 0 or 1
 			switch_to_best_weapon = (mode == 0 && sv_client->weaponswitch_pending) || firing;
+			switch_to_best_weapon &= (ent->health >= 1.0f); // Don't try and switch if dead
 
 			SV_ServerSideWeaponRank(sv_client, &best_weapon, &best_impulse, &hide_weapon, &hide_impulse);
 
 			if (switch_to_best_weapon && sv_client->weaponswitch_pending && sv_client->weaponswitch_forgetorder) {
+				char new_wrank[16] = { 0 };
+
 				// Over-write the list sent with the result
 				if (developer.integer) {
 					SV_ClientPrintf(sv_client, PRINT_HIGH, "Best: %d, forgetting rest\n", best_impulse);
 				}
 				sv_client->weaponswitch_priority[0] = best_impulse;
 				sv_client->weaponswitch_priority[1] = 0;
+
+				new_wrank[0] = '0' + best_impulse;
+				if (hide_impulse) {
+					new_wrank[1] = '0' + hide_impulse;
+				}
+
+				SV_UserSetWeaponRank(sv_client, new_wrank);
 			}
 
 			if (!ent->impulse) {
 				if (switch_to_best_weapon) {
 					if (best_impulse && ent->weapon != best_weapon) {
+						if (developer.integer) {
+							SV_ClientPrintf(sv_client, PRINT_HIGH, "Switching to best weapon: %d\n", best_impulse);
+						}
+
 						ent->impulse = best_impulse;
 						impulse_set = true;
 					}
@@ -3789,7 +3805,7 @@ void SV_PostRunCmd(void)
 					impulse_set = true;
 				}
 			}
-			sv_client->weaponswitch_pending = false;
+			sv_client->weaponswitch_pending = (ent->health >= 1.0f);
 		}
 #endif
 
@@ -3880,6 +3896,25 @@ static void SV_ExecuteClientMove (client_t *cl, usercmd_t oldest, usercmd_t oldc
 	SV_RunCmd (&newcmd, false, false);
 	
 	SV_PostRunCmd();
+}
+
+/*
+SV_UserSetWeaponRank
+
+Sets wrank userinfo for mods to pick best weapon based on user's preferences
+*/
+static void SV_UserSetWeaponRank(client_t* cl, const char* new_wrank)
+{
+	char old_wrank[16] = { 0 };
+	strlcpy(old_wrank, Info_Get(&cl->_userinfo_ctx_, "wrank"), sizeof(old_wrank));
+	if (strcmp(old_wrank, new_wrank)) {
+		Info_Set(&cl->_userinfo_ctx_, "wrank", new_wrank);
+		ProcessUserInfoChange(sv_client, "wrank", old_wrank);
+
+		if (developer.integer) {
+			SV_ClientPrintf(sv_client, PRINT_HIGH, "Setting new wrank: %s\n", new_wrank);
+		}
+	}
 }
 
 /*
@@ -4051,6 +4086,7 @@ void SV_ExecuteClientMessage (client_t *cl)
 			int sequence_set = cl->netchan.incoming_sequence;
 			int weapon_hide_selection = 0;
 			int new_selections[MAX_WEAPONSWITCH_OPTIONS] = { 0 };
+			char new_wrank[MAX_WEAPONSWITCH_OPTIONS + 1] = { 0 };
 
 			// This might be a duplicate that should be ignored
 			if (flags & clc_mvd_weapon_forget_ranking) {
@@ -4065,10 +4101,15 @@ void SV_ExecuteClientMessage (client_t *cl)
 				int weap1 = (weap >> 4) & 15;
 				int weap2 = (weap & 15);
 
+				weap1 = bound(0, weap1, 9);
+				weap2 = bound(0, weap2, 9);
+
 				if (weap1 && write && w < MAX_WEAPONSWITCH_OPTIONS) {
+					new_wrank[w] = '0' + weap1;
 					new_selections[w++] = weap1;
 				}
 				if (weap1 && weap2 && write && w < MAX_WEAPONSWITCH_OPTIONS) {
+					new_wrank[w] = '0' + weap2;
 					new_selections[w++] = weap2;
 				}
 
@@ -4089,6 +4130,10 @@ void SV_ExecuteClientMessage (client_t *cl)
 				cl->weaponswitch_mode = (flags & (clc_mvd_weapon_mode_presel | clc_mvd_weapon_mode_iffiring));
 				cl->weaponswitch_hide = weapon_hide_selection;
 				memcpy(cl->weaponswitch_priority, new_selections, sizeof(cl->weaponswitch_priority));
+
+				if (!cl->weaponswitch_forgetorder) {
+					SV_UserSetWeaponRank(cl, new_wrank);
+				}
 			}
 			cl->weaponswitch_pending |= write;
 			cl->weaponswitch_sequence_set = sequence_set;
