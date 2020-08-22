@@ -43,7 +43,7 @@ typedef enum {
 		for (i = 0; i < MAX_SUBPROGRAMS; ++i) { \
 			gl_program_t* prog = R_SpecificSubProgram((program_id), i); \
 			memset(&prog->shaders, 0, sizeof(prog->shaders)); \
-			prog->friendly_name = name; \
+			strlcpy(prog->friendly_name, va("%s[%d]", (name), i), sizeof(prog->friendly_name)); \
 			prog->needs_params = expect_params; \
 			prog->shaders[shadertype_vertex].text = (const char*)sourcename##_vertex_glsl; \
 			prog->shaders[shadertype_vertex].length = sourcename##_vertex_glsl_len; \
@@ -65,7 +65,7 @@ typedef enum {
 		for (i = 0; i < MAX_SUBPROGRAMS; ++i) { \
 			gl_program_t* prog = R_SpecificSubProgram((program_id), i); \
 			memset(prog->shaders, 0, sizeof(prog->shaders)); \
-			prog->friendly_name = name; \
+			strlcpy(prog->friendly_name, va("%s[%d]", (name), i), sizeof(prog->friendly_name)); \
 			prog->needs_params = expect_params; \
 			prog->shaders[shadertype_compute].text = (const char*)sourcename##_compute_glsl; \
 			prog->shaders[shadertype_compute].length = sourcename##_compute_glsl_len; \
@@ -118,7 +118,7 @@ typedef struct {
 } gl_program_attribute_t;
 
 typedef struct gl_program_s {
-	const char* friendly_name;
+	char friendly_name[128];
 	qbool needs_params;
 	program_compile_func_t compile_func;
 	qbool initialised;
@@ -620,7 +620,7 @@ static qbool GL_CompileProgram(
 	const char* fragment_shader_text[MAX_SHADER_COMPONENTS] = { program->shaders[shadertype_fragment].text, "", "", "", "", "" };
 	GLint fragment_shader_text_length[MAX_SHADER_COMPONENTS] = { program->shaders[shadertype_fragment].length, 0, 0, 0, 0, 0 };
 
-	Con_Printf("Compiling: %s\n", friendlyName);
+	Con_DPrintf("Compiling: %s\n", friendlyName);
 
 	vertex_components = GL_InsertDefinitions(vertex_shader_text, vertex_shader_text_length, program->included_definitions);
 	geometry_components = GL_InsertDefinitions(geometry_shader_text, geometry_shader_text_length, program->included_definitions);
@@ -772,7 +772,9 @@ void GL_ProgramsInitialise(void)
 	GL_BuildCoreDefinitions();
 
 	for (i = 0; i < MAX_SUBPROGRAMS; ++i) {
-		R_SpecificSubProgram(r_program_none, i)->friendly_name = "(none)";
+		gl_program_t* prog = R_SpecificSubProgram(r_program_none, i);
+
+		strlcpy(prog->friendly_name, "(none)", sizeof(prog->friendly_name));
 	}
 
 	for (p = r_program_none; p < r_program_count; ++p) {
@@ -1115,7 +1117,6 @@ void R_ProgramUniformMatrix4fv(r_program_uniform_id uniform_id, const float* val
 
 int R_ProgramUniformGet1i(r_program_uniform_id uniform_id, int default_value)
 {
-	r_program_uniform_t* base_uniform = &program_uniforms[uniform_id];
 	gl_program_uniform_t* program_uniform = GL_ProgramUniformFind(uniform_id);
 
 	if (program_uniform->location >= 0) {
